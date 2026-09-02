@@ -1,0 +1,248 @@
+<div class="app-layout">
+  <!-- Top Floating Header Bar -->
+  <header class="header-overlay">
+    <div class="brand">
+      <div class="logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+          <line x1="8" y1="2" x2="8" y2="18"></line>
+          <line x1="16" y1="6" x2="16" y2="22"></line>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>MapLibre GL JS</h1>
+        <span class="subtitle">Vector Tile & Circle Layer Explorer</span>
+      </div>
+    </div>
+
+    <!-- Click Interaction Mode Switcher -->
+    <div class="mode-selector">
+      <button 
+        class="mode-btn" 
+        [class.active]="clickMode() === 'circle'" 
+        (click)="setClickMode('circle')"
+        title="Click to create 10px circles on the circle layer"
+      >
+        <span class="mode-icon-circle" [style.background-color]="circleColor()"></span>
+        <span>10px Circle Mode</span>
+      </button>
+      <button 
+        class="mode-btn" 
+        [class.active]="clickMode() === 'marker'" 
+        (click)="setClickMode('marker')"
+        title="Click to drop pin markers"
+      >
+        <span>📍 Pin Mode</span>
+      </button>
+    </div>
+
+    <!-- Status Badge -->
+    <div class="status-badge" [class.loading]="status() === 'Loading'" [class.ready]="status() === 'Ready'" [class.error]="status() === 'Error'">
+      <span class="pulse-dot"></span>
+      <span class="status-text">{{ status() }}</span>
+    </div>
+
+    <!-- Quick Action Controls -->
+    <div class="header-actions">
+      <button class="btn btn-glass" (click)="toggle3D()" [class.active]="is3D()" title="Toggle 3D Pitch">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+          <line x1="12" y1="22.08" x2="12" y2="12"></line>
+        </svg>
+        <span>{{ is3D() ? '3D View' : '2D View' }}</span>
+      </button>
+
+      <button class="btn btn-glass" (click)="resetView()" title="Reset Camera View">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+          <path d="M3 3v5h5"></path>
+        </svg>
+        <span>Reset</span>
+      </button>
+
+      @if (circleCount() > 0) {
+        <button class="btn btn-glass btn-danger" (click)="clearCircles()" title="Clear all created 10px circles">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="15" y1="9" x2="9" y2="15"></line>
+            <line x1="9" y1="9" x2="15" y2="15"></line>
+          </svg>
+          <span>Clear Circles ({{ circleCount() }})</span>
+        </button>
+      }
+
+      @if (markerCount() > 0) {
+        <button class="btn btn-glass btn-danger" (click)="clearMarkers()" title="Remove clicked markers">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          <span>Clear Pins ({{ markerCount() }})</span>
+        </button>
+      }
+    </div>
+  </header>
+
+  <!-- Left Control Sidebar Overlay -->
+  <aside class="sidebar-overlay">
+    <!-- Circle Layer Configuration Panel -->
+    <section class="panel-section circle-layer-panel">
+      <div class="section-title-bar">
+        <h2 class="section-title">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <circle cx="12" cy="12" r="3"></circle>
+          </svg>
+          10px Circle Layer
+        </h2>
+        <span class="badge badge-accent">Fixed 10px Radius</span>
+      </div>
+
+      <div class="panel-card">
+        <div class="layer-stats">
+          <div class="stat-box">
+            <span class="stat-number" [style.color]="circleColor()">{{ circleCount() }}</span>
+            <span class="stat-label">Circles Created</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-number">10 px</span>
+            <span class="stat-label">Screen Radius</span>
+          </div>
+        </div>
+
+        <div class="color-picker-group">
+          <label class="input-label">Circle Layer Color:</label>
+          <div class="color-swatches">
+            @for (opt of colorOptions; track opt.hex) {
+              <button 
+                class="swatch-btn" 
+                [class.active]="circleColor() === opt.hex"
+                [style.background-color]="opt.hex"
+                (click)="setCircleColor(opt.hex)"
+                [title]="opt.name"
+              ></button>
+            }
+          </div>
+        </div>
+
+        <div class="action-row">
+          <button 
+            class="btn btn-primary btn-full" 
+            [class.active]="clickMode() === 'circle'" 
+            (click)="setClickMode('circle')"
+          >
+            {{ clickMode() === 'circle' ? '⚡ Click Map to Add Circles' : 'Switch to Circle Creation Mode' }}
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vector Tile Style Selector Section -->
+    <section class="panel-section">
+      <h2 class="section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+          <polyline points="2 17 12 22 22 17"></polyline>
+          <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+        Vector Tile Styles
+      </h2>
+
+      <div class="style-list">
+        @for (preset of stylePresets; track preset.id) {
+          <div 
+            class="style-card" 
+            [class.active]="activeStyleId() === preset.id"
+            (click)="selectStyle(preset)"
+          >
+            <div class="style-card-header">
+              <span class="style-name">{{ preset.name }}</span>
+              <span class="badge">{{ preset.badge }}</span>
+            </div>
+            <p class="style-desc">{{ preset.description }}</p>
+          </div>
+        }
+      </div>
+
+      <!-- Custom Vector Tile URL Input -->
+      <div class="custom-url-box">
+        <label for="customUrl">Custom Tile Style URL (json):</label>
+        <div class="input-group">
+          <input 
+            id="customUrl"
+            type="text" 
+            placeholder="https://example.com/style.json"
+            [value]="customInputUrl()"
+            (input)="onCustomUrlChange($event)"
+          />
+          <button class="btn btn-primary" (click)="applyCustomStyle()">Load</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Location Presets Section -->
+    <section class="panel-section">
+      <h2 class="section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="10" r="3"></circle>
+          <path d="M12 21.7C17.3 17 20 13 20 10a8 8 0 1 0-16 0c0 3 2.7 7 8 11.7z"></path>
+        </svg>
+        Fly to Location
+      </h2>
+
+      <div class="location-chips">
+        @for (loc of locationPresets; track loc.name) {
+          <button class="chip" (click)="flyToPreset(loc)">
+            <span class="chip-city">{{ loc.name }}</span>
+            <span class="chip-country">{{ loc.country }}</span>
+          </button>
+        }
+      </div>
+    </section>
+
+    <!-- Live Telemetry / HUD Section -->
+    <section class="panel-section telemetry-panel">
+      <h2 class="section-title">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+        </svg>
+        Live Telemetry
+      </h2>
+
+      <div class="telemetry-grid">
+        <div class="metric-item">
+          <span class="metric-label">Latitude</span>
+          <span class="metric-value">{{ lat() }}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Longitude</span>
+          <span class="metric-value">{{ lng() }}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Zoom</span>
+          <span class="metric-value">{{ zoom() }}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Circles Layer</span>
+          <span class="metric-value highlight" [style.color]="circleColor()">{{ circleCount() }}</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Pitch</span>
+          <span class="metric-value">{{ pitch() }}°</span>
+        </div>
+        <div class="metric-item">
+          <span class="metric-label">Active Layers</span>
+          <span class="metric-value highlight">{{ layerCount() }}</span>
+        </div>
+      </div>
+
+      <div class="hint-box">
+        🎯 <strong>Circle Creation:</strong> Click anywhere on the map in Circle Mode to render a vector circle with a fixed 10px radius. Click existing circles to inspect or delete them.
+      </div>
+    </section>
+  </aside>
+
+  <!-- Fullscreen Map Container -->
+  <div #mapContainer class="map-container"></div>
+</div>
